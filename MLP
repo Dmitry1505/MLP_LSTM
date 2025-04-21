@@ -1,0 +1,97 @@
+# Реализация MLP
+# Импорт необходимых библиотек
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+import matplotlib.pyplot as plt
+
+# Класс для предобработки данных
+class DataPreprocessor:
+    def __init__(self):
+        self.scaler = StandardScaler()
+
+    def preprocess_data(self, X_train, X_test):
+        X_train_scaled = self.scaler.fit_transform(X_train)
+        X_test_scaled = self.scaler.transform(X_test)
+        return X_train_scaled, X_test_scaled
+
+# Класс для модели MLP
+class MLPModel:
+    def __init__(self):
+        self.model = Sequential()
+
+    def add_layer(self, units, input_dim=None, activation='relu'):
+        if input_dim:
+            self.model.add(Dense(units, input_dim=input_dim, activation=activation))
+        else:
+            self.model.add(Dense(units, activation=activation))
+
+    def compile(self, optimizer='adam', loss='mean_squared_error'):
+        self.model.compile(optimizer=optimizer, loss=loss)
+
+    def fit(self, X_train, y_train, epochs=50, batch_size=32, validation_split=0.2, verbose=1):
+        history = self.model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size, validation_split=validation_split, verbose=verbose)
+        return history
+
+    def evaluate(self, X_test, y_test):
+        loss = self.model.evaluate(X_test, y_test)
+        return loss
+
+    def predict(self, X_test):
+        return self.model.predict(X_test)
+
+# Класс для визуализации результатов
+class ModelEvaluator:
+    def plot_results(self, y_test, y_pred, title='Сравнение прогнозов MLP и фактических значений'):
+        plt.figure(figsize=(10, 6))
+        plt.plot(y_test, label='Фактические значения')
+        plt.plot(y_pred, label='Прогноз MLP')
+        plt.legend()
+        plt.title(title)
+        plt.xlabel('Примеры')
+        plt.ylabel('Объем производства')
+        plt.show()
+
+# Основной класс
+class Main:
+    def __init__(self):
+        self.data_preprocessor = DataPreprocessor()
+        self.model_evaluator = ModelEvaluator()
+
+    def run(self):
+        # Загрузка данных
+        data = pd.read_csv('production_data.csv')
+        X = data[['employees', 'downtime_hours', 'maintenance_cost']]
+        y = data['production_volume']
+
+        # Разделение данных
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+        # Предобработка данных
+        X_train_scaled, X_test_scaled = self.data_preprocessor.preprocess_data(X_train, X_test)
+
+        # Создание и обучение модели MLP
+        mlp_model = MLPModel()
+        mlp_model.add_layer(64, input_dim=X_train_scaled.shape[1], activation='relu')
+        mlp_model.add_layer(32, activation='relu')
+        mlp_model.add_layer(1)
+        mlp_model.compile(optimizer='adam', loss='mean_squared_error')
+        mlp_model.fit(X_train_scaled, y_train, epochs=50, batch_size=32, validation_split=0.2, verbose=1)
+
+        # Оценка модели
+        loss_mlp = mlp_model.evaluate(X_test_scaled, y_test)
+        print(f"MLP Test Loss: {loss_mlp}")
+
+        # Прогнозирование
+        y_pred_mlp = mlp_model.predict(X_test_scaled)
+
+        # Визуализация результатов
+        self.model_evaluator.plot_results(y_test, y_pred_mlp)
+
+# Запуск программы
+if __name__ == "__main__":
+    main = Main()
+    main.run()
